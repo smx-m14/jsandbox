@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Sandbox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="https://cdn.jsdelivr.net/gh/smx-m14/js@main/favicon.ico" type="image/x-icon">
+    
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/monokai.min.css">
+
+    <!-- Font Awesome per les icones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        body {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            font-family: Roboto, sans-serif;
+            font-size: 140%;
+        }
+
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-bottom: 2px solid #ccc;
+        }
+
+        #editor-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background-color: #89BD9E;
+            color: white;
+            font-size: 16px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            font-family: "Roboto", sans-serif;
+            transition: background-color 0.5s ease;
+        }
+
+        button:hover {
+            background-color: #698e78;
+        }
+
+        button i {
+            margin-right: 8px;
+        }
+
+        .buttons input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background-color: #DB4C40;
+            color: white;
+            font-size: 16px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            font-family: "Roboto", sans-serif;
+            transition: background-color 0.5s ease;
+        }
+
+        .file-label:hover {
+            background-color: #b84339;
+        }
+
+        .file-label i {
+            margin-right: 8px;
+        }
+
+        #downloadBtn {
+            background-color: #b72551;
+        }
+
+        #downloadBtn:hover {
+            background-color: #8B1E3F;
+        }
+
+        #editor-container {
+            display: flex;
+            flex: 1;
+        }
+
+        #editor {
+            flex: 1;
+            border-right: 2px solid #ccc;
+            background-color: red;
+            position: relative;
+        }
+
+        .CodeMirror {
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            bottom: 0;
+            height: auto;
+        }
+
+        #output-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #console {
+            height: calc(100% - 20px);
+            background-color: black;
+            color: lime;
+            padding: 10px;
+            font-family: monospace;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            top: 0;
+        }
+
+        .log-boolean,
+        .log-undefined {color: magenta;}
+        .log-object,
+        .log-string {color: orange;}
+        .log-number {color: cyan;}
+        .log-error {
+            color: red;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/gh/smx-m14/js@main/jquery.js"></script>
+</head>
+
+<body>
+
+    <div id="header">
+        <div id="editor-title">JavaScript Sandbox</div>
+        <div class="buttons">
+            <button id="runBtn">
+                <i class="fas fa-play"></i> Run
+            </button>
+            <label for="uploadFile" class="file-label">
+                <i class="fas fa-file-upload"></i> Open File
+            </label>
+            <input type="file" id="uploadFile" />
+            <button id="downloadBtn">
+                <i class="fas fa-download"></i> Download Code
+            </button>
+        </div>
+    </div>
+
+    <div id="editor-container">
+        <div id="editor"></div>
+        <div id="output-container">
+            <div id="console"></div>
+        </div>
+    </div>
+
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+
+    <script>
+        // Inicialitzem CodeMirror per l'editor
+        const editor = CodeMirror(document.getElementById("editor"), {
+            mode: "javascript",
+            theme: "monokai",
+            lineNumbers: true,
+            gutters: ["CodeMirror-lint-markers"],
+            lint: true,
+            extraKeys: { "Ctrl-Space": "autocomplete" },
+            value: "$(function() {\n  \n  \n  \n});"
+        });
+
+        // Inicialitzem la consola
+        const consoleOutput = document.getElementById("console");
+
+        // Funció per afegir text a la consola amb colors diferents segons el tipus de dada
+        function logToConsole(value) {
+            const messageElement = document.createElement('div');
+
+            // Determinar el tipus de la dada i aplicar classes de color
+            if (typeof value === 'string') {
+                messageElement.textContent = value;
+                messageElement.classList.add('log-string');
+            } else if (typeof value === 'number') {
+                messageElement.textContent = value;
+                messageElement.classList.add('log-number');
+            } else if (typeof value === 'boolean') {
+                messageElement.textContent = value;
+                messageElement.classList.add('log-boolean');
+            } else {
+                messageElement.textContent = value;
+            }
+
+            consoleOutput.appendChild(messageElement);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        // Sobreescrivim console.log i console.error
+        (function () {
+            const originalLog = console.log;
+            const originalError = console.error;
+
+            console.log = function (...args) {
+                args.forEach(arg => logToConsole(arg));
+                originalLog.apply(console, args);
+            };
+
+            console.error = function (...args) {
+                const messageElement = document.createElement('div');
+                messageElement.textContent = 'Error: ' + args.join(' ');
+                messageElement.classList.add('log-error');
+                consoleOutput.appendChild(messageElement);
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                originalError.apply(console, args);
+            };
+        })();
+
+        // Botó "Run" per executar el codi
+        document.getElementById('runBtn').addEventListener('click', function () {
+            const code = editor.getValue();
+            consoleOutput.innerHTML = "";
+
+            try {
+                eval(code);
+            } catch (e) {
+                console.error(e.message);
+            }
+        });
+
+        // Funció per pujar fitxers de codi
+        document.getElementById('uploadFile').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    editor.setValue(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Funció per descarregar el codi com a fitxer
+        document.getElementById('downloadBtn').addEventListener('click', function () {
+            const code = editor.getValue();
+            const blob = new Blob([code], { type: "text/javascript" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "code.js";
+            link.click();
+        });
+    </script>
+
+</body>
+
+</html>
